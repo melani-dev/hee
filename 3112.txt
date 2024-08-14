@@ -1,0 +1,624 @@
+SET GLOBAL LOCAL_INFILE=TRUE;
+SET GLOBAL local_infile = 'ON';
+
+CREATE TABLE hotel
+ ( hotel_no CHAR(4) NOT NULL,
+ name VARCHAR(20) NOT NULL,
+ address VARCHAR(50) NOT NULL);
+
+CREATE TABLE room
+ ( room_no VARCHAR(4) NOT NULL,
+ hotel_no CHAR(4) NOT NULL,
+ type CHAR(1) NOT NULL,
+ price DECIMAL(5,2) NOT NULL);
+
+
+ INSERT INTO hotel
+ VALUES ('H111', 'Grosvenor Hotel‘, 'London');
+ INSERT INTO room
+ VALUES ('1', 'H111', 'S', 72.00);
+ INSERT INTO guest
+ VALUES ('G111', 'John Smith', 'London');
+ INSERT INTO booking
+ VALUES ('H111', 'G111', DATE'1999-01-01', 
+DATE'1999-01-02', '1');
+
+ UPDATE room SET price = price*1.05;
+
+
+
+Simple Queries
+1. List full details of all hotels.
+SELECT *FROM hotel;
+2. List full details of all hotels in London.
+SELECT *FROM hotel WHERE address="London";
+3. List the names and addresses of all guests in
+London, alphabetically ordered by name.
+SELECT name,address="London" FROM hotel ORDER BY name;
+4. List all double or family rooms with a price
+below £40.00 per night, in ascending order of
+price.
+SELECT *FROM room WHERE type IN ('D', 'F') AND price < 40.00 ORDER BY price ASC;
+5. List the bookings for which no date_to has
+been specified
+ SELECT *FROM booking WHERE date_to='1999-01-02';
+
+
+Aggregate Functions
+1. How many hotels are there?
+ SELECT *FROM hotel h INNER JOIN room r ON h.hotel_no=r.hotel_no;
+2. What is the average price of a room?
+SELECT AVG(price) FROM room;
+3. What is the total revenue per night from
+all double rooms?
+ SELECT SUM(price) FROM room WHERE type='D';
+4. How many different guests have made
+bookings for August?
+ SELECT COUNT(DISTINCT guest_no) FROM booking WHERE MONTH(date_from) = 8;
+
+
+Subqueries and Joins
+1. List the price and type of all rooms at the Grosvenor
+Hotel.
+ SELECT price,type FROM room WHERE hotel_no = 
+(SELECT hotel_no FROM hotel WHERE name = 'Grosvenor Hotel');
+2. List all guests currently staying at the Grosvenor Hotel.
+SELECT DISTINCT guest_no FROM booking WHERE hotel_no = (
+SELECT hotel_no WHERE name = 'Grosvenor Hotel') 
+AND CURRENT_DATE BETWEEN date_from AND date_to;
+3. List the details of all rooms at the Grosvenor Hotel,
+including the name of the guest staying in the room, if
+the room is occupied.
+4. What is the total income from bookings for the
+Grosvenor Hotel today?
+5. List the rooms that are currently unoccupied at the
+Grosvenor Hotel.
+6. What is the lost income from unoccupied rooms at the
+Grosvenor Hotel?
+ 
+ 
+ 
+ 
+1. Consider the relational schema for a “Company” database which is shown below. The primary 
+keys are underlined and foreign keys are Bold in the below given logical Schema.  
+ 
+Supplier (SubID, SubName, Status, City) 
+Project (ProID, ProName, City) 
+Parts (PartsID, PartsName, Color, Weight, City) 
+Shipments(SubID, PartsID, ProID, Quatity) 
+
+ii. Create a database in the name “Company”. 
+CREATE DATABASE Company;
+     USE Company;
+      
+iii. Create the tables for the above mentioned logical schema under the “Company” 
+database and set the Primary Keys and the Foreign Keys together with CASCADE 
+DELETE and UPDATE settings. 
+
+CREATE TABLE Supplier(SubID varchar(5) PRIMARY KEY,SubName VARCHAR(50), Status INT, City VARCHAR(60));
+   
+CREATE TABLE Project(ProID VARCHAR(10) PRIMARY KEY, ProName VARCHAR(50), City VARCHAR(50));         
+
+CREATE TABLE Parts(PartsID VARCHAR(15) PRIMARY KEY, PartsName VARCHAR(50), Color VARCHAR(15), Weight INT, City VARCHAR(50));
+
+      
+REATE TABLE Shipments(SubID VARCHAR(15), PartsID VARCHAR(15), ProID VARCHAR(15), Quatity INT, PRIMARY KEY (SubID, PartsID, ProID),FOREIGN KEY (SubID) REFERENCES Supplier(SubID) ON DELETE CASCADE ON UPDATE CASCADE, FOREIGN KEY (PartsID) REFERENCES Parts(PartsID) ON DELETE CASCADE ON UPDATE CASCADE,  FOREIGN KEY (ProID) REFERENCES Project(ProID) ON DELETE CASCADE ON UPDATE CASCADE);
+
+
+iv. Test data are given in the text format for each table, in the desktop file “TestData.txt”. Insert appropriate data into the tables created under “Company”.  
+
+LOAD DATA LOCAL INFILE 'D:/21/Supplier.txt' INTO TABLE supplier;
+
+iv. Create a username “manager01” and password “abc%123” for administrator with all 
+privileges
+
+CREATE USER 'manager01'@'localhost' IDENTIFIED BY 'abc%123';
+
+GRANT ALL PRIVILEGES ON Company.* TO 'manager01'@'localhost' WITH GRANT OPTION;
+
+          
+v. Create a username “emp01” and the password is “xyz@123” for staff. The user 
+“emp01” only has privileges to create view, select, insert, update and delete on all 
+tables in the database “company”.                
+     
+CREATE USER 'emp01'@'localhost' IDENTIFIED BY 'xyz@123';
+ GRANT CREATE VIEW, SELECT, INSERT, UPDATE, DELETE ON Company.* TO 'emp01'@'localhost';
+
+ 
+2. Write a SQL statement to create a view by the user “emp01” based on following 
+ii. To get all the project names and the number of suppliers who supplied for the project
+
+CREATE VIEW ProjectSupplierCount AS
+     SELECT p.ProName AS ProjectName, COUNT(s.SubID) AS SupplierCount
+     FROM Project p
+     LEFT JOIN Shipments sh ON p.ProID = sh.ProID
+     LEFT JOIN Supplier s ON sh.SubID = s.SubID
+     GROUP BY p.ProID;
+ 
+iii. To get all the supplier names and the parts ID supplied by the supplier 
+ 
+CREATE VIEW SupplierParts AS
+     SELECT s.SubName AS SupplierName, sh.PartsID
+     FROM Supplier s
+     INNER JOIN Shipments sh ON s.SubID = sh.SubID;
+
+3. Write a SQL statement to create a procedure based on following 
+i. to get the supplier names who supply all the parts.             
+supplier names who supply at least one red part [pass colour as IN parameter].  
+ 
+DELIMITER ||
+ CREATE PROCEDURE GetSuppliers(IN color VARCHAR(50))
+     BEGIN
+     SELECT s.SubName
+         FROM Supplier s
+         WHERE NOT EXISTS (
+            SELECT p.PartsID
+             FROM Parts p
+             WHERE NOT EXISTS (
+                 SELECT sh.SubID
+                 FROM Shipments sh
+                 WHERE sh.SubID = s.SubID AND sh.PartsID = p.PartsID
+             )
+         );
+     SELECT DISTINCT s.SubName
+         FROM Supplier s
+         JOIN Shipments sh ON s.SubID = sh.SubID
+         JOIN Parts p ON sh.PartsID = p.PartsID
+         WHERE p.Color = color;
+     END ||
+
+    DELIMITER ;
+      
+ii. to get the minimum and the maximum quantity for part p2 [get min and max as OUT 
+parameter].
+
+DELIMITER ||
+ CREATE PROCEDURE GetMinMaxQuantity(OUT minQuantity INT, OUT maxQuantity INT)
+     BEGIN
+         SELECT MIN(Quantity) INTO minQuantity
+         FROM Shipments
+         WHERE PartsID = (SELECT PartsID FROM Parts WHERE PartsName = 'Part2');
+     
+        SELECT MAX(Quantity) INTO maxQuantity
+         FROM Shipments
+         WHERE PartsID = (SELECT PartsID FROM Parts WHERE PartsName = 'Part2');
+     END ||
+
+ DELIMITER ;
+           
+iii. to rank the projects based on the total weight (in kg) of the supplied for the projects. 
+[Pass “ProID” as IN parameter.] 
+
+ 
+iv. If the total weight is greater than 20000kg, rank it as “Heavy weight project”.  
+v. If the total weight is between 10000kg and 20000kg, rank it as “Medium weight 
+project”. 
+vi. If the total weight is less than 10000kg, rank it as “Low weight project”.  
+DELIMITER ||
+
+CREATE PROCEDURE RankProjects(IN ProID VARCHAR(15))
+BEGIN
+    DECLARE totalWeight DECIMAL(10, 2);
+    DECLARE projectRank VARCHAR(50);
+
+    -- Calculate the total weight of supplied parts for the given project
+    SELECT SUM(p.Weight * sh.Quatity) INTO totalWeight
+    FROM Shipments sh
+    JOIN Parts p ON sh.PartsID = p.PartsID
+    WHERE sh.ProID = ProID;
+
+    -- Determine the rank based on the total weight
+    IF totalWeight > 20000 THEN
+        SET projectRank = 'Heavy weight project';
+    ELSEIF totalWeight BETWEEN 10000 AND 20000 THEN
+        SET projectRank = 'Medium weight project';
+    ELSE
+        SET projectRank = 'Low weight project';
+    END IF;
+
+    -- Output the rank
+    SELECT projectRank AS Rank;
+END ||
+
+DELIMITER ;
+
+
+
+       
+Q1. 
+a) 
+Given below is the logical schema for a "Transaction" database, where primary keys are 
+underlined and foreign keys are in bold.  
+Salesman (SalesmanID, Name, City, Commission) 
+Customer (CustomerID, CustomerName, Gender, City, Grade, SalesmanID) 
+OrderBy (OrderNo, PurchaseAmount, OrderDate, CustomerID, SalesmanID) 
+i. Create a database in the name “Transaction”.
+CREATE DATABASE Transaction;
+USE Transaction
+              
+ii. Create the tables for the given logical schema under the “Transaction” database and set 
+the Primary Keys and the Foreign Keys together with cascade delete and update settings.   
+Following constraints on the relevant tables:  
+a. In the table “Customer”, insert the customer’s name with the title.  (e.g.: If “Gender” 
+is male then Mr. <name> otherwise Ms. <name>) 
+
+b. In the table “OrderBy”, the “OrderDate” should be greater than current date. If not, 
+the status of the order is invalid. 
+iii. Test data are given in the text format for each table, in the desktop file “Data.txt”. Insert appropriate data into the tables created under “Transaction” database.
+
+CREATE TABLE Salesman (
+         SalesmanID INT PRIMARY KEY,
+         Name VARCHAR(255),
+         City VARCHAR(255),
+         Commission DECIMAL(5,2));
+
+CREATE TABLE Customer (
+    CustomerID VARCHAR(5) PRIMARY KEY,
+    CustomerName VARCHAR(100),
+    Gender CHAR(1),
+    City VARCHAR(100),
+    Grade INT,
+    SalesmanID INT,
+    CONSTRAINT fk_salesman FOREIGN KEY (SalesmanID) REFERENCES Salesman(SalesmanID)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT gender_name CHECK (CustomerName LIKE 'Mr. %' AND Gender = 'M' OR CustomerName LIKE 'Ms. %' AND Gender = 'F')
+);
+
+CREATE TABLE OrderBy (
+    OrderNo INT PRIMARY KEY,
+    PurchaseAmount DECIMAL(10, 2),
+    OrderDate DATE,
+    CustomerID VARCHAR(5),
+    SalesmanID INT,
+    CONSTRAINT fk_customer FOREIGN KEY (CustomerID) REFERENCES Customer(CustomerID)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT fk_salesman_order FOREIGN KEY (SalesmanID) REFERENCES Salesman(SalesmanID)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT valid_order CHECK (OrderDate > CURDATE())
+);
+
+
+                  
+ 
+b) Write a SQL statement to create a view based on following 
+i. 
+To get the highest purchase amount on a date '2023-03-24' for each salesman with their 
+SalesmanID.
+
+SELECT o.SalesmanID, MAX(o.PurchaseAmount) AS HighestAmount
+     FROM OrderBy o
+     WHERE o.OrderDate = '2024-03-24'
+     GROUP BY o.SalesmanID;
+ 
+ii. To get all the salesmen’s name who worked for only one customer. 
+
+CREATE VIEW OneCustomerSalesmen AS
+     SELECT s.SalesmanID, s.Name
+     FROM Salesman s
+     JOIN Customer c ON s.SalesmanID = c.SalesmanID
+     GROUP BY s.SalesmanID, s.Name
+     HAVING COUNT(DISTINCT c.CustomerID) = 1;
+           
+iii. To get the customers’s name whose Grade is higher than to that of every customer in 
+Batticaloa.               
+
+CREATE VIEW HighGradeCustomers AS
+     SELECT *
+     FROM Customer
+     WHERE Grade > ALL (SELECT Grade FROM Customer WHERE City = 'Batticaloa');
+
+Q2. 
+a) Create a trigger, that ensures the “CustomerID” of Customer table is in a format ‘C3002’ 
+(“CustomerID” must start with ‘C’ and must be 5 characters long). If not, then complete 
+“CustomerID” with this format before inserting into the customer table.
+
+DELIMITER //
+
+ CREATE TRIGGER format_CustomerID BEFORE INSERT ON Customer
+     FOR EACH ROW
+     BEGIN
+        DECLARE new_id CHAR(5);
+         SET new_id = CONCAT('C', LPAD(NEW.CustomerID, 4, '0'));
+         SET NEW.CustomerID = new_id;
+     END//
+
+DELIMITER ;
+
+Create a procedure to insert the new value into “Customer” table and insert following records in the table by using the created procedure      
+CustomerID 		CustomerName		City		Grade 		SalesmanID 
+3010  			Kenisiya		Colombo		100 		5004 
+3011  			Malathi			Batticaloa	200 		5007
+  
+ DELIMITER //
+
+ CREATE PROCEDURE InsertCustomer(
+         IN new_CustomerID CHAR(5),
+         IN new_CustomerName VARCHAR(255),
+         IN new_City VARCHAR(255),
+         IN new_Grade INT,
+         IN new_SalesmanID INT
+     )
+     BEGIN
+         INSERT INTO Customer (CustomerID, CustomerName, City, Grade, SalesmanID)
+         VALUES (new_CustomerID, new_CustomerName, new_City, new_Grade, new_SalesmanID);
+     END//
+
+DELIMITER ;
+CALL InsertCustomer('3010', 'Kenisiya', 'Colombo', 100, 5004);
+
+Create a view to get all the customers, who are either belongs to the city Batticaloa or had a grade above 100 and display created view. 
+
+CREATE VIEW BatticaloaOrHighGrade AS
+     SELECT *
+     FROM Customer
+     WHERE City = 'Batticaloa' OR Grade > 100;
+
+Write statements that drop the views that you created above. 
+
+DROP VIEW IF EXISTS BatticaloaOrHighGrade;
+                     
+b)  
+Create a trigger that will itself update “Commission” when inserting new record to 
+“Salesman” table. Where, Commission = Commission * 100. Then insert the records below 
+given in the table. 
+SalesmanID 	Name		City		Commission	
+5008  		Kumuthini	Trincomalee	0.16
+5009  		Ratnayakka 	Batticaloa 	0.14 
+  
+ DELIMITER //
+ 
+ CREATE TRIGGER UpdateCommission
+     BEFORE INSERT ON Salesman
+     FOR EACH ROW
+     BEGIN
+         SET NEW.Commission = NEW.Commission * 100;
+     END;
+     //
+
+DELIMITER ;
+
+INSERT INTO Salesman (SalesmanID, Name, City, Commission) VALUES ('5008', 'Kumuthini', 'Trincomalee', 0.16);
+INSERT INTO Salesman (SalesmanID, Name, City, Commission) VALUES ('5009', 'Ratnayakka', 'Batticaloa', 0.14);
+
+Create a view to get those salesmen with all information who gets the commission within a 
+range of 14 and 16 and display created view. 
+
+CREATE VIEW CommissionInRange AS
+     SELECT *
+     FROM Salesman
+     WHERE Commission BETWEEN 0.14 AND 0.16;
+
+Write statements that drop the views that you created above.                     
+
+DROP VIEW IF EXISTS CommissionInRange;
+
+c) 
+Create a table named "OrderBy_backup" within the "Transaction" database according to the 
+following: 
+OrderBy_Backup(OrderNo, PurchaseAmount, OrderDate, CustomerID,SalesmanID, Date) 
+
+CREATE TABLE OrderBy_backup (
+         OrderNo INT PRIMARY KEY,
+         PurchaseAmount DECIMAL(10,2),
+         OrderDate DATE,
+         CustomerID VARCHAR(10),
+         SalesmanID VARCHAR(10),
+         Date DATETIME DEFAULT NOW()
+     );
+
+Create a trigger that stores the old data table of “OrderBy” table in “OrderBy_backup" while updating the “OrderBy” table. 
+
+DELIMITER //
+CREATE TRIGGER BackupOrderBy
+     BEFORE UPDATE ON OrderBy
+     FOR EACH ROW
+     BEGIN
+         INSERT INTO OrderBy_backup(OrderNo, PurchaseAmount, OrderDate, CustomerID, SalesmanID)
+         VALUES(OLD.OrderNo, OLD.PurchaseAmount, OLD.OrderDate, OLD.CustomerID, OLD.SalesmanID);
+     END;
+     //
+
+DELIMITER ;
+
+Create a procedure to update in “OrderBy” table and update following records in the table by using the created procedure      
+
+DELIMITER //
+ CREATE PROCEDURE UpdateOrder(IN newSalesmanID VARCHAR(10))
+     BEGIN
+         -- i. Update all Null values in the "OrderBy" table in the "SalemanID" column, and set them to "5008".
+         UPDATE OrderBy SET SalesmanID = newSalesmanID WHERE SalesmanID IS NULL;
+        -- ii. If the "OrderDate" is not greater than 31/03/2024, update the "OrderDate" to 01/04/2024.
+         UPDATE OrderBy SET OrderDate = '2024-04-01' WHERE OrderDate <= '2024-03-31';
+     END;
+     //
+ 
+ DELIMITER ;
+CALL UpdateOrder('5008');
+
+SELECT *FROM Orderby_backup;
+
+i. Update all Null values in the "OrderBy" table in the "SalemanID" column, and set them 
+to "5008".  
+ii. If the "OrderDate" is not greater than 31/03/2023, update the "OrderDate" to 
+01/04/2023.                           
+ 
+d) Write SQL expressions for each of the following tasks:  
+i. Back-up the details of the tables “Salesman”, “Customer and “OrderBy”.  
+
+CREATE TABLE Salesman_backup LIKE Salesman;
+INSERT INTO Salesman_backup SELECT * FROM Salesman;
+
+CREATE TABLE customer_backup LIKE customer;
+INSERT INTO customer_backup SELECT * FROM customer;
+
+ CREATE TABLE orderbytable_backup LIKE orderby;
+INSERT INTO orderbytable_backup SELECT * FROM orderby;
+
+ii. Take a copy of the database without tuples and create a new database as 
+“TransactionNew” then recover the definition of all tables from the database 
+“Transaction” to the database “TransactionNew”.  
+
+    CREATE DATABASE TransactionNew;
+      ysqldump -d -h <hostname> -u <username> -p Transaction > transaction_structure.sql ;
+
+
+
+Create a New User 
+CREATE USER 'newuser'@'localhost' IDENTIFIED BY 'password'; 
+Review a user’s current permissions 
+SHOW GRANTS username; 
+Grant Permission Syntax 
+GRANT type_of_permission ON database_name.table_name TO 
+‘username’@'localhost’; 
+Revoke Permission Syntax 
+REVOKE type_of_permission ON database_name.table_name FROM 
+‘username’@‘localhost’; 
+DROP to delete a user 
+DROP USER ‘username’@‘localhost’;
+
+
+CREATE VIEW view_name AS 
+SELECT column1, column2, ... 
+FROM table_name 
+WHERE condition; 
+DROP VIEW Syntax 
+DROP VIEW view_name; 
+
+Create Procedure <proc-name> (param_spec1
+ , param_spec2
+ , …, param_specn
+ )  
+begin 
+ -- execution code  
+end;
+
+delimiter || 
+CREATE PROCEDURE dorepeat(p1 INT) 
+BEGIN 
+SET @x = 0; 
+REPEAT SET @x = @x + 1;  
+UNTIL @x > p1 END REPEAT; 
+END || 
+delimiter ; 
+CALL dorepeat(1000);
+
+create trigger<triggername> 
+{BEFORE|AFTER} 
+{INSERT|UPDATE|DELETE} 
+on <tablename> 
+for each row 
+begin 
+ //<trigger sql statement>; 
+end
+ 
+
+
+SELECT VERSION(), CURRENT_DATE;
+
+SELECT SIN(PI()/4), (4+1)*5;
+
+SELECT VERSION(); SELECT NOW();
+
+SHOW DATABASES;
+
+CREATE  DATABASE tceusl;
+
+USE tceusl;
+
+SHOW TABLES;
+
+CREATE TABLE students ( index_no VARCHAR(20),fname VARCHAR(20),
+lname VARCHAR(20));
+
+SHOW TABLES;
+
+ DESCRIBE students;
+ 
+DROP TABLE students;
+
+ INSERT INTO students VALUES ('12/BMS/01','Samantha' ,'Bandara', '12, Main 
+Street, Kurunagela','m','1999-03-05','BMS', 'TCEUSL',NULL);
+
+LOAD DATA LOCAL INFILE “student.txt" INTO TABLE students; 
+
+SELECT * FROM students;
+
+SELECT * FROM students WHERE fname ="Barath";
+
+SELECT * FROM students WHERE birth_date >= "1991-1-1";
+
+SELECT * FROM students WHERE sex=“f” AND dept=“PHY”; 
+
+SELECT * FROM students WHERE sex=“f" OR dept=“COM”;
+
+ select fname, birth_date from students;
+ 
+ SELECT fname,birth_date FROM students ORDER BY birth_date;
+ 
+SELECT fname,birth_date FROM students ORDER BY birth_date
+ DESC;
+ 
+select fname from students where tp_no IS NOT NULL;
+
+select fname from students where tp_no IS NULL;
+
+beginning with “M”
+SELECT * FROM students WHERE fname LIKE ‘M%'; 
+
+ending with “NA”
+ SELECT * FROM students WHERE fname LIKE '%na'; 
+ 
+ 
+To display all students names containing exactly six 
+characters.
+ mysql> SELECT * FROM students WHERE fname LIKE ‘_ _ _ _ _ _'; 
+ 
+ 
+ list all students who are 
+belongs to  "COM" or "PHY" departments.
+ mysql> SELECT * FROM students WHERE dept IN ('COM','PHY');
+ 
+between '1990-01-31' AND 
+'1991-01-31' from the table students.
+ mysql> SELECT *FROM students WHERE (birth_date BETWEEN '1990-01-31' 
+AND '1991-01-31');
+
+
+count the number of students from each
+ department.
+ mysql> SELECT dept, COUNT(*) FROM students GROUP BY dept;
+ 
+ 
+1(INNER JOIN in Sql)  
+ Mysql > SELECT * 
+FROM Customers c
+ INNER JOIN Orders o
+ ON o.CustomerId=c.CustomerId
+ 
+ 
+(LEFT JOIN in Sql)  
+ Mysql > SELECT *
+ FROM Customers c 
+LEFT OUTER JOIN Orders o
+ ON o.CustomerId=c.CustomerId
+ 
+ 
+ 
+RIGHT JOIN in Sql)  
+ Mysql > SELECT * 
+FROM Customers c
+ RIGHT OUTER JOIN Orders o
+ ON o.CustomerId=c.CustomerId
+ 
+ 
+ 
+ FULL OUTER JOIN AS Follows
+  Mysql > SELECT * 
+FROM Customers c
+ LEFT JOIN Orders o
+ ON o.CustomerId=c.CustomerId
+ UNION
+ SELECT * 
+FROM Customers c
+ RIGHT JOIN Orders o
+ ON o.CustomerId=c.CustomerId
